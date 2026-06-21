@@ -1,12 +1,12 @@
-# ragtrace
+# ragpeek
 
-[![CI](https://github.com/meutsabdahal/ragtrace/actions/workflows/ci.yaml/badge.svg)](https://github.com/meutsabdahal/ragtrace/actions/workflows/ci.yaml)
+[![CI](https://github.com/meutsabdahal/ragpeek/actions/workflows/ci.yaml/badge.svg)](https://github.com/meutsabdahal/ragpeek/actions/workflows/ci.yaml)
 
 **A lightweight debugger for RAG pipelines.**
 
-When a RAG pipeline gives a wrong answer, you have no idea why. `ragtrace` wraps your existing pipeline with one decorator and shows you exactly where it broke retrieval, context ranking, or generation.
+When a RAG pipeline gives a wrong answer, you have no idea why. `ragpeek` wraps your existing pipeline with one decorator and shows you exactly where it broke retrieval, context ranking, or generation.
 
-> **Score convention:** `ragtrace` assumes higher scores mean more relevant chunks.
+> **Score convention:** `ragpeek` assumes higher scores mean more relevant chunks.
 > If your vector store returns distances, convert them to similarities before logging.
 
 ```
@@ -43,7 +43,7 @@ $ python app.py
 
 Most RAG debugging looks like this: print retrieved chunks to stdout, read them manually, guess what went wrong. That's not debugging that's hoping.
 
-`ragtrace` gives you a structured trace of every query: what was retrieved, similarity scores per chunk, the exact prompt sent to the model, and a plain-English diagnosis of where the pipeline is weak.
+`ragpeek` gives you a structured trace of every query: what was retrieved, similarity scores per chunk, the exact prompt sent to the model, and a plain-English diagnosis of where the pipeline is weak.
 
 ---
 
@@ -52,8 +52,8 @@ Most RAG debugging looks like this: print retrieved chunks to stdout, read them 
 This project is not yet published to PyPI. Install from source (recommended):
 
 ```bash
-git clone https://github.com/meutsabdahal/ragtrace
-cd ragtrace
+git clone https://github.com/meutsabdahal/ragpeek
+cd ragpeek
 # Recommended: use the uv-native workflow (creates environment and installs dev deps)
 uv sync --group dev
 # Run tests or examples via uv
@@ -70,7 +70,7 @@ pip install -e .
 
 Requires Python 3.10+.
 
-On first semantic run, `ragtrace` may download a small embedding model (~80MB). This is a one-time download.
+On first semantic run, `ragpeek` may download a small embedding model (~80MB). This is a one-time download.
 
 ---
 
@@ -79,7 +79,7 @@ On first semantic run, `ragtrace` may download a small embedding model (~80MB). 
 **1. Add two imports and two log calls to your existing pipeline**
 
 ```python
-from ragtrace import trace, log_retrieval, log_generation
+from ragpeek import trace, log_retrieval, log_generation
 
 @trace
 def answer_question(query: str) -> str:
@@ -108,7 +108,7 @@ The trace prints automatically. Nothing else changes.
 ### Sync pipeline
 
 ```python
-from ragtrace import trace, log_retrieval, log_generation
+from ragpeek import trace, log_retrieval, log_generation
 
 @trace
 def answer(query: str) -> str:
@@ -146,7 +146,7 @@ def answer(query: str) -> str:
 ### Configure thresholds
 
 ```python
-from ragtrace import trace, TracerConfig
+from ragpeek import trace, TracerConfig
 
 config = TracerConfig(
     min_score_threshold=0.6,   # flag chunks below this (default: 0.5)
@@ -171,7 +171,7 @@ def answer(query: str) -> str:
 ### Disable rendering for downstream tooling
 
 ```python
-from ragtrace import trace, log_retrieval, log_generation, serialize_trace
+from ragpeek import trace, log_retrieval, log_generation, serialize_trace
 
 @trace(render=False)
 def answer(query: str) -> str:
@@ -209,7 +209,7 @@ log_retrieval(query=query,
               scores=[r.score for r in results])
 ```
 
-> **Note on scores:** `ragtrace` assumes higher score = more relevant.
+> **Note on scores:** `ragpeek` assumes higher score = more relevant.
 > If your vector store returns distances (lower = better), convert them
 > before calling `log_retrieval`: `score = 1.0 - distance`.
 
@@ -218,7 +218,7 @@ log_retrieval(query=query,
 If your workflow needs a non-default association, keep the returned span objects and pair them explicitly:
 
 ```python
-from ragtrace import trace, log_retrieval, log_generation, link_retrieval_to_generation
+from ragpeek import trace, log_retrieval, log_generation, link_retrieval_to_generation
 
 @trace(render=False)
 def answer(query: str) -> str:
@@ -263,7 +263,7 @@ The embedding model runs entirely locally your data never leaves your machine.
 
 ## Limitations
 
-`log_retrieval` and `log_generation` must be called manually `ragtrace` does not monkey-patch framework internals. This means it works with any stack but requires three lines of instrumentation code per pipeline. This is a deliberate tradeoff: explicit over magic.
+`log_retrieval` and `log_generation` must be called manually `ragpeek` does not monkey-patch framework internals. This means it works with any stack but requires three lines of instrumentation code per pipeline. This is a deliberate tradeoff: explicit over magic.
 
 Similarity score thresholds assume higher = better relevance. Convert distances to similarities before calling `log_retrieval` if your vector store returns distances.
 
@@ -272,8 +272,8 @@ Similarity score thresholds assume higher = better relevance. Convert distances 
 ## Development setup
 
 ```bash
-git clone https://github.com/meutsabdahal/ragtrace
-cd ragtrace
+git clone https://github.com/meutsabdahal/ragpeek
+cd ragpeek
 uv sync --group dev
 uv run pytest tests/ -v
 ```

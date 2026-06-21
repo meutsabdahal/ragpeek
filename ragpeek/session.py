@@ -21,7 +21,7 @@ class RetrievalSpan:
     def __post_init__(self):
         # normalise scores — some vector stores return distances
         # (lower = better), others return similarities (higher = better).
-        # ragtrace assumes higher = better. Users are responsible for
+        # ragpeek assumes higher = better. Users are responsible for
         # converting distances to similarities before calling log_retrieval.
         if len(self.scores) != len(self.chunks):
             raise ValueError(

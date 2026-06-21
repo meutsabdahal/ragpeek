@@ -1,8 +1,8 @@
 from __future__ import annotations
 import json
 from html import escape as html_escape
-from ragtrace.session import TraceSession
-from ragtrace.serialization import trace_to_dict
+from ragpeek.session import TraceSession
+from ragpeek.serialization import trace_to_dict
 
 
 def render_html(session: TraceSession) -> str:

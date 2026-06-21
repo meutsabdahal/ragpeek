@@ -1,8 +1,8 @@
 import json
 import pytest
-from ragtrace import trace, log_retrieval, log_generation, link_retrieval_to_generation
-from ragtrace.collector import get_collector
-from ragtrace.serialization import serialize_trace
+from ragpeek import trace, log_retrieval, log_generation, link_retrieval_to_generation
+from ragpeek.collector import get_collector
+from ragpeek.serialization import serialize_trace
 
 
 def setup_function():
@@ -74,15 +74,15 @@ def test_log_retrieval_outside_trace_is_noop():
 def test_trace_with_output_arg():
     import tempfile, os
 
-    @trace(output="/tmp/test_ragtrace_report.html")
+    @trace(output="/tmp/test_ragpeek_report.html")
     def pipeline(query: str) -> str:
         log_retrieval(query=query, chunks=["chunk one"], scores=[0.75])
         log_generation(prompt="prompt", response="response", model="test")
         return "done"
 
     pipeline("test query")
-    assert os.path.exists("/tmp/test_ragtrace_report.html")
-    os.remove("/tmp/test_ragtrace_report.html")
+    assert os.path.exists("/tmp/test_ragpeek_report.html")
+    os.remove("/tmp/test_ragpeek_report.html")
 
 
 def test_trace_can_disable_rendering(monkeypatch):
@@ -90,7 +90,7 @@ def test_trace_can_disable_rendering(monkeypatch):
     analyzer_calls = []
 
     monkeypatch.setattr(
-        "ragtrace.renderers.terminal.render_session",
+        "ragpeek.renderers.terminal.render_session",
         lambda *args, **kwargs: render_calls.append((args, kwargs)),
     )
 
@@ -100,7 +100,7 @@ def test_trace_can_disable_rendering(monkeypatch):
         return session.analysis_report
 
     monkeypatch.setattr(
-        "ragtrace.analyzers.run_all_analyzers",
+        "ragpeek.analyzers.run_all_analyzers",
         fake_run_all_analyzers,
     )
 
@@ -139,7 +139,7 @@ def test_explicit_linking_and_serialization():
 def test_span_latencies_are_recorded(monkeypatch):
     ticks = iter([1.0, 1.25, 3.0, 3.5])
 
-    monkeypatch.setattr("ragtrace.session.time.perf_counter", lambda: next(ticks))
+    monkeypatch.setattr("ragpeek.session.time.perf_counter", lambda: next(ticks))
 
     @trace
     def pipeline() -> object:

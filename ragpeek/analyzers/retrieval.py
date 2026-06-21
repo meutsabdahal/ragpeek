@@ -1,7 +1,6 @@
 from __future__ import annotations
-import statistics
-from ragtrace.session import RetrievalSpan
-from ragtrace.config import TracerConfig
+from ragpeek.session import RetrievalSpan
+from ragpeek.config import TracerConfig
 
 
 def analyze_retrieval(span: RetrievalSpan, config: TracerConfig) -> None:

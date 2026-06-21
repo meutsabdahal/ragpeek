@@ -2,8 +2,8 @@ from __future__ import annotations
 from functools import lru_cache
 from collections.abc import Sequence
 from typing import Any
-from ragtrace.session import RetrievalSpan, GenerationSpan
-from ragtrace.config import TracerConfig
+from ragpeek.session import RetrievalSpan, GenerationSpan
+from ragpeek.config import TracerConfig
 
 
 @lru_cache(maxsize=1)
@@ -15,7 +15,7 @@ def _get_semantic_resources():
     except ImportError as exc:
         raise RuntimeError(
             "Semantic analysis requires optional dependencies. "
-            "Install with: pip install ragtrace[semantic]"
+            "Install with: pip install ragpeek[semantic]"
         ) from exc
 
     from rich.console import Console
@@ -99,7 +99,7 @@ def analyze_context(
                 "Semantic analysis is enabled but optional semantic dependencies "
                 "are not installed. Falling back to non-semantic analysis."
             ),
-            install_hint="pip install ragtrace[semantic]",
+            install_hint="pip install ragpeek[semantic]",
         )
         report["findings"].append(note)
         return report

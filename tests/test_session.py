@@ -1,5 +1,5 @@
 import pytest
-from ragtrace.session import RetrievalSpan, GenerationSpan, TraceSession
+from ragpeek.session import RetrievalSpan, GenerationSpan, TraceSession
 import json
 from pathlib import Path
 

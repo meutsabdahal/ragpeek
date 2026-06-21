@@ -5,8 +5,8 @@ from rich.panel import Panel
 from rich.text import Text
 from rich import box
 
-from ragtrace.session import TraceSession, RetrievalSpan, GenerationSpan
-from ragtrace.config import TracerConfig
+from ragpeek.session import TraceSession, RetrievalSpan, GenerationSpan
+from ragpeek.config import TracerConfig
 
 console = Console()
 

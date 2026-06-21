@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from ragtrace.session import GenerationSpan, RetrievalSpan, TraceSession
+from ragpeek.session import GenerationSpan, RetrievalSpan, TraceSession
 
 
 def _retrieval_span_to_dict(span: RetrievalSpan) -> dict[str, Any]:

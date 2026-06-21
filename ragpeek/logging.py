@@ -1,7 +1,7 @@
 from __future__ import annotations
 from typing import Optional
-from ragtrace.collector import get_collector
-from ragtrace.session import RetrievalSpan, GenerationSpan
+from ragpeek.collector import get_collector
+from ragpeek.session import RetrievalSpan, GenerationSpan
 
 
 def log_retrieval(

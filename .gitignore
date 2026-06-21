@@ -51,6 +51,9 @@ coverage.xml
 .pytest_cache/
 cover/
 
+# ragpeek example output
+async_report.html
+
 # Translations
 *.mo
 *.pot

@@ -1,11 +1,11 @@
-# ragtrace/analyzers/__init__.py
+# ragpeek/analyzers/__init__.py
 from __future__ import annotations
 from typing import Any
-from ragtrace.session import TraceSession
-from ragtrace.config import TracerConfig
-from ragtrace.analyzers.retrieval import analyze_retrieval
-from ragtrace.analyzers.context import analyze_context
-from ragtrace.analyzers.generation import analyze_generation
+from ragpeek.session import TraceSession
+from ragpeek.config import TracerConfig
+from ragpeek.analyzers.retrieval import analyze_retrieval
+from ragpeek.analyzers.context import analyze_context
+from ragpeek.analyzers.generation import analyze_generation
 
 
 def run_all_analyzers(session: TraceSession, config: TracerConfig) -> dict[str, Any]:

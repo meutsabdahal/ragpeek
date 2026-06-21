@@ -3,8 +3,8 @@ import asyncio
 import httpx
 import chromadb
 
-from ragtrace import trace, log_retrieval, log_generation
-from ragtrace.config import TracerConfig
+from ragpeek import trace, log_retrieval, log_generation
+from ragpeek.config import TracerConfig
 
 # Corpus setup — same tiny in-memory ChromaDB as simple_rag.py
 _client = chromadb.Client()

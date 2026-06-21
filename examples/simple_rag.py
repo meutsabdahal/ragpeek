@@ -1,6 +1,6 @@
 import chromadb
 import httpx
-from ragtrace import trace, log_retrieval, log_generation
+from ragpeek import trace, log_retrieval, log_generation
 
 # --- setup a tiny in-memory ChromaDB corpus ---
 client = chromadb.Client()

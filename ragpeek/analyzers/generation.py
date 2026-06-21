@@ -1,6 +1,6 @@
 from __future__ import annotations
-from ragtrace.session import GenerationSpan
-from ragtrace.config import TracerConfig
+from ragpeek.session import GenerationSpan
+from ragpeek.config import TracerConfig
 
 # phrases that correlate with the model answering from training weights
 # rather than the provided context

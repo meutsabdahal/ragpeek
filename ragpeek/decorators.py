@@ -4,8 +4,8 @@ import functools
 import time
 from typing import Optional, Callable, Any
 
-from ragtrace.collector import get_collector
-from ragtrace.config import TracerConfig
+from ragpeek.collector import get_collector
+from ragpeek.config import TracerConfig
 
 
 def trace(
@@ -131,9 +131,9 @@ def _extract_query(func: Callable, args: tuple, kwargs: dict) -> str:
 
 def _post_process(session, *, config, output, semantic, render) -> None:
     """Run analyzers then render. Called after the traced function returns."""
-    from ragtrace.analyzers import run_all_analyzers
-    from ragtrace.renderers.terminal import render_session
-    from ragtrace.renderers.html import render_html
+    from ragpeek.analyzers import run_all_analyzers
+    from ragpeek.renderers.terminal import render_session
+    from ragpeek.renderers.html import render_html
 
     cfg = config or TracerConfig(semantic=semantic)
     run_all_analyzers(session, config=cfg)

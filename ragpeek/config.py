@@ -13,10 +13,6 @@ class TracerConfig:
     semantic: bool = True  # enables embedding-based analysis
     lost_in_middle_position: int = 1  # flag if best chunk is beyond this index
 
-    # generation analyzer
-    hedging_threshold: float = 0.3  # flag if >30% sentences contain hedging
-    entity_match_threshold: float = 0.4
-
     # rendering
     show_prompt: bool = True
     show_chunks: bool = True

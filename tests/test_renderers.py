@@ -2,10 +2,10 @@ import io
 
 from rich.console import Console
 
-from ragtrace.renderers.html import render_html
-from ragtrace.renderers import terminal as terminal_renderer
-from ragtrace.config import TracerConfig
-from ragtrace.session import GenerationSpan, RetrievalSpan, TraceSession
+from ragpeek.renderers.html import render_html
+from ragpeek.renderers import terminal as terminal_renderer
+from ragpeek.config import TracerConfig
+from ragpeek.session import GenerationSpan, RetrievalSpan, TraceSession
 
 
 def test_render_html_escapes_dynamic_content():

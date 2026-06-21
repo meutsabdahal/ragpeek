@@ -1,7 +1,7 @@
 from __future__ import annotations
 from contextvars import ContextVar, Token
 from typing import Optional
-from ragtrace.session import TraceSession
+from ragpeek.session import TraceSession
 
 # the ContextVar — stores the session_id of the currently active trace.
 # ContextVar propagates correctly through async code and is safe with threading.

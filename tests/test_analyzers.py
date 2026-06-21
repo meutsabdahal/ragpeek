@@ -1,9 +1,9 @@
 import pytest
-from ragtrace.session import RetrievalSpan, GenerationSpan
-from ragtrace.config import TracerConfig
-from ragtrace.analyzers.retrieval import analyze_retrieval
-from ragtrace.analyzers.generation import analyze_generation
-from ragtrace.analyzers.context import analyze_context
+from ragpeek.session import RetrievalSpan, GenerationSpan
+from ragpeek.config import TracerConfig
+from ragpeek.analyzers.retrieval import analyze_retrieval
+from ragpeek.analyzers.generation import analyze_generation
+from ragpeek.analyzers.context import analyze_context
 
 
 def make_retrieval_span(scores):
@@ -106,7 +106,7 @@ def test_context_analysis_semantic_missing_dependencies_falls_back(monkeypatch):
         raise RuntimeError("missing semantic extras")
 
     monkeypatch.setattr(
-        "ragtrace.analyzers.context._get_semantic_resources", _raise_missing
+        "ragpeek.analyzers.context._get_semantic_resources", _raise_missing
     )
 
     report = analyze_context(
