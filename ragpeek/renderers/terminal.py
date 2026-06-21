@@ -64,11 +64,14 @@ def render_retrieval(span: RetrievalSpan, config: TracerConfig) -> None:
         console.print(table)
 
     for diagnosis in span.diagnosis:
+        # Concern signals warn (yellow); precision / "no signals" read positive.
+        # Note: a sharp rank-1 "gap" is now a precision signal, so it is *not*
+        # listed here.
         icon = (
             "⚠"
             if any(
                 w in diagnosis.lower()
-                for w in ["low", "padding", "gap", "noise", "small"]
+                for w in ["padding", "flat", "discrimination", "returned", "below"]
             )
             else "✓"
         )

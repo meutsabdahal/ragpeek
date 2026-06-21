@@ -23,7 +23,7 @@
             "k_returned": 5,
             "latency_ms": 128.1,
             "diagnosis": [
-                "3 of 5 chunks scored below 0.5 — low-relevance padding detected. Consider reducing k or raising your retriever's min_score threshold."
+                "3 of 5 chunks sit in the lower half of this result's score range (top 0.81, bottom 0.41) — possible low-relevance padding. Signal — calibrate to your embedder."
             ]
         }
     ],
@@ -36,7 +36,7 @@
             "response_tokens": 124,
             "latency_ms": 2341.2,
             "diagnosis": [
-                "Response is most similar to chunk #2, not chunk #1. Possible ranking issue — highest-scored chunk may not be the most relevant. Consider reranking before generation."
+                "Rank-disagreement signal: the response aligns most with chunk #2 (retrieval rank 2, score 0.79), not the retriever's top-ranked chunk #1 (score 0.81). The retriever's ordering disagrees with the chunk the answer actually used — a reranking signal. Signal — calibrate to your embedder."
             ]
         }
     ]

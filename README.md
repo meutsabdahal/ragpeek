@@ -25,13 +25,14 @@ $ python app.py
  │ Market capitalisation stood at...        │ 0.38  │  ⚠   │
  │ Foreign investment flows into...         │ 0.25  │  ⚠   │
  └──────────────────────────────────────────┴───────┴──────┘
- ⚠ 3 of 5 chunks scored below 0.5 — low-relevance padding.
-   Consider reducing k or raising min_score threshold.
+ ⚠ 3 of 5 chunks sit in the lower half of this result's score
+   range (top 0.89, bottom 0.25) — possible low-relevance padding.
+   Signal — calibrate to your embedder.
 
  Generation                                                 200ms
  Prompt tokens: 87  │  Response tokens: 92  │  Model: llama3.2
 
- ✓ Generation looks healthy — no obvious issues detected.
+ ✓ Generation looks healthy — no obvious signals.
 
  Total latency: 280ms
 ──────────────────────────────────────────────────────────────────
@@ -149,10 +150,11 @@ def answer(query: str) -> str:
 from ragpeek import trace, TracerConfig
 
 config = TracerConfig(
-    min_score_threshold=0.6,   # flag chunks below this (default: 0.5)
-    score_gap_threshold=0.3,   # flag if top-2 score gap exceeds this
-    semantic=True,              # embedding-based context analysis
-    show_prompt=False,          # hide full prompt in terminal output
+    score_gap_threshold=0.3,     # rank-1→rank-2 gap that reads as precision
+    semantic=True,               # embedding-based context analysis
+    show_prompt=False,           # hide full prompt in terminal output
+    # min_score_threshold=0.6,   # opt-in absolute floor — only set once you've
+    #                            # calibrated a cutoff for your own embedder
 )
 
 @trace(config=config)
@@ -190,28 +192,37 @@ The analyzers still run and populate `session.analysis_report`; once you have th
 ## Works with any vector store
 
 ```python
-# ChromaDB
+# ChromaDB (cosine space): distance ∈ [0, 2] → similarity = 1 - distance
 results = collection.query(query_texts=[query], n_results=5)
 log_retrieval(query=query,
               chunks=results["documents"][0],
-              scores=results["distances"][0])
+              scores=[1.0 - d for d in results["distances"][0]])
 
-# FAISS
+# FAISS IndexFlatL2 with normalized vectors: similarity = 1 - d² / 2
 distances, indices = index.search(query_embedding, k=5)
 log_retrieval(query=query,
               chunks=[corpus[i] for i in indices[0]],
-              scores=distances[0].tolist())
+              scores=[1.0 - (d ** 2) / 2 for d in distances[0].tolist()])
 
-# Qdrant
+# Qdrant (cosine): .score is already a similarity — use it as-is
 results = client.search("docs", query_vector=embedding, limit=5)
 log_retrieval(query=query,
               chunks=[r.payload["text"] for r in results],
               scores=[r.score for r in results])
 ```
 
-> **Note on scores:** `ragpeek` assumes higher score = more relevant.
-> If your vector store returns distances (lower = better), convert them
-> before calling `log_retrieval`: `score = 1.0 - distance`.
+> **Note on scores:** `ragpeek` assumes higher score = more relevant. There is
+> no single distance→similarity formula — convert per metric:
+>
+> | Store returns | Correct conversion |
+> |---|---|
+> | Cosine distance (∈ [0, 2]) | `score = 1.0 - distance` (exact) |
+> | L2 / Euclidean, normalized vectors | `score = 1.0 - distance ** 2 / 2` (exact) |
+> | L2 / Euclidean, un-normalized | `score = 1.0 / (1.0 + distance)` (monotonic squash) |
+> | Inner product / dot product | already a similarity — use as-is (negate if returned as a distance) |
+>
+> `score = 1.0 - distance` is **only** correct for cosine distance; using it on
+> raw L2 distances silently produces wrong (often negative) similarities.
 
 ### Explicit retrieval-generation pairing
 
@@ -233,16 +244,21 @@ This is useful when a generation should be tied to a specific retrieval step aft
 
 ---
 
-## What it detects
+## What it surfaces
+
+These are **signals to calibrate**, not verdicts. Scores are read within each
+result set, so they don't assume an absolute scale — tune thresholds to your
+own embedder.
 
 | Signal | What it means |
 |---|---|
-| Low retrieval scores | Retrieved chunks don't match the query well |
-| High score gap | Top result dominates rest is noise |
+| Within-set padding | Most chunks fall in the lower half of *this result's* score range (relative, not an absolute cutoff) |
+| Sharp rank-1 separation | The retriever cleanly separates the top match — a **precision** signal, not noise |
+| Flat distribution | Scores barely differ — the retriever can't discriminate (query too vague / chunks too broad) |
 | k mismatch | Retriever returned fewer chunks than requested |
-| Lost in the middle | Most relevant chunk is not at position 0 |
-| Low context utilisation | LLM response is very short relative to context |
-| Hedging language | LLM may be answering from training weights, not context |
+| Rank disagreement | The answer aligns with a chunk the retriever didn't rank first — a reranking signal |
+| Low context utilisation | The response is semantically dissimilar to every retrieved chunk |
+| Hedging language | Phrase-level signal the model may be answering from training weights, not context |
 
 ---
 
@@ -252,8 +268,8 @@ This is useful when a generation should be tied to a specific retrieval step aft
 2. Session ID is stored in a `contextvars.ContextVar` propagates correctly through both sync and async code without you passing anything around
 3. `log_retrieval()` and `log_generation()` read the `ContextVar` and append spans to the active session
 4. After your function returns, three analyzers run on the collected data:
-   - **Retrieval analyzer**: score distributions, low-relevance padding, k mismatch
-   - **Context analyzer**: chunk-response similarity, lost-in-middle detection
+   - **Retrieval analyzer**: within-set score distribution, low-relevance padding, rank-1 precision, k mismatch
+   - **Context analyzer**: chunk-response similarity, rank-disagreement (reranking) signal
    - **Generation analyzer**: hedging language, response length anomalies
 5. Terminal renderer prints the trace; HTML renderer saves a shareable report
 
@@ -265,7 +281,7 @@ The embedding model runs entirely locally your data never leaves your machine.
 
 `log_retrieval` and `log_generation` must be called manually `ragpeek` does not monkey-patch framework internals. This means it works with any stack but requires three lines of instrumentation code per pipeline. This is a deliberate tradeoff: explicit over magic.
 
-Similarity score thresholds assume higher = better relevance. Convert distances to similarities before calling `log_retrieval` if your vector store returns distances.
+Retrieval signals are computed *within* each result set and assume higher = better relevance, but they can't know your embedder's absolute scale — treat every diagnosis as a signal to calibrate, not a verdict. Convert distances to similarities per metric (see the table above) before calling `log_retrieval`.
 
 ---
 

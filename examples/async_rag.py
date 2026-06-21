@@ -8,7 +8,10 @@ from ragpeek.config import TracerConfig
 
 # Corpus setup — same tiny in-memory ChromaDB as simple_rag.py
 _client = chromadb.Client()
-_collection = _client.create_collection("demo_async")
+# Use cosine space so distance ∈ [0, 2] and similarity = 1 - distance is exact.
+_collection = _client.create_collection(
+    "demo_async", metadata={"hnsw:space": "cosine"}
+)
 
 _collection.add(
     documents=[
@@ -36,9 +39,9 @@ async def async_retrieve(query: str, k: int = 3) -> tuple[list[str], list[float]
     results = await loop.run_in_executor(None, _query)
 
     chunks = results["documents"][0]
-    # ChromaDB returns L2 distances — convert to rough similarity score
+    # Cosine distance ∈ [0, 2] → similarity = 1 - distance (exact for this metric).
     distances = results["distances"][0]
-    scores = [max(0.0, 1.0 - d) for d in distances]
+    scores = [1.0 - d for d in distances]
 
     return chunks, scores
 

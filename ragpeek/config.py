@@ -4,14 +4,18 @@ from dataclasses import dataclass, field
 
 @dataclass
 class TracerConfig:
-    # retrieval analyzer thresholds
-    min_score_threshold: float = 0.5
-    score_gap_threshold: float = 0.3
-    low_relevance_ratio: float = 0.5  # flag if >50% chunks below min_score
+    # retrieval analyzer thresholds.
+    # Signals are computed *within* each result set, so they don't depend on
+    # your embedder's absolute score scale. min_score_threshold is an opt-in
+    # absolute floor — leave it None unless you've calibrated a cutoff for the
+    # specific embedder/metric you're using.
+    min_score_threshold: float | None = None
+    score_gap_threshold: float = 0.3  # rank-1→rank-2 gap that reads as precision
+    low_relevance_ratio: float = 0.5  # flag if >this share of chunks trail in-set
 
     # context analyzer
     semantic: bool = True  # enables embedding-based analysis
-    lost_in_middle_position: int = 1  # flag if best chunk is beyond this index
+    rank_disagreement_position: int = 1  # flag if the answer's best chunk ranks beyond this
 
     # rendering
     show_prompt: bool = True

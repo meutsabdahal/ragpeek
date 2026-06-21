@@ -16,22 +16,43 @@ def make_retrieval_span(scores):
     )
 
 
-def test_retrieval_low_scores_flagged():
+def test_retrieval_within_set_padding_flagged():
+    # top-heavy set: most chunks trail the best match within this result set
+    span = make_retrieval_span([0.9, 0.85, 0.2, 0.15, 0.1])
+    analyze_retrieval(span, config=TracerConfig())
+    assert any("padding" in d for d in span.diagnosis)
+
+
+def test_retrieval_flat_distribution_reads_as_low_discrimination():
+    # near-identical scores carry no within-set signal except low discrimination
     span = make_retrieval_span([0.3, 0.3, 0.3, 0.3, 0.3])
     analyze_retrieval(span, config=TracerConfig())
-    assert any("low-relevance" in d for d in span.diagnosis)
+    assert any("discrimination" in d.lower() for d in span.diagnosis)
 
 
-def test_retrieval_healthy_scores_pass():
+def test_retrieval_clean_spread_raises_no_signal():
     span = make_retrieval_span([0.85, 0.82, 0.80, 0.78, 0.75])
     analyze_retrieval(span, config=TracerConfig())
-    assert any("healthy" in d for d in span.diagnosis)
+    assert any("No retrieval signals" in d for d in span.diagnosis)
 
 
-def test_retrieval_large_gap_flagged():
+def test_retrieval_sharp_gap_reads_as_precision_not_noise():
     span = make_retrieval_span([0.92, 0.40, 0.38, 0.35, 0.33])
     analyze_retrieval(span, config=TracerConfig())
-    assert any("gap" in d for d in span.diagnosis)
+    assert any("precision" in d for d in span.diagnosis)
+    assert not any("noise" in d.lower() for d in span.diagnosis)
+
+
+def test_retrieval_absolute_floor_is_opt_in():
+    # default config has no absolute floor — no absolute-cutoff signal fires
+    default_span = make_retrieval_span([0.3, 0.3, 0.3, 0.3, 0.3])
+    analyze_retrieval(default_span, config=TracerConfig())
+    assert not any("absolute floor" in d for d in default_span.diagnosis)
+
+    # setting min_score_threshold opts into the calibrated absolute check
+    floor_span = make_retrieval_span([0.3, 0.3, 0.3, 0.3, 0.3])
+    analyze_retrieval(floor_span, config=TracerConfig(min_score_threshold=0.5))
+    assert any("absolute floor" in d for d in floor_span.diagnosis)
 
 
 def test_retrieval_k_mismatch_flagged():

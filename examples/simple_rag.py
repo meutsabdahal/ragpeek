@@ -4,7 +4,8 @@ from ragpeek import trace, log_retrieval, log_generation
 
 # --- setup a tiny in-memory ChromaDB corpus ---
 client = chromadb.Client()
-collection = client.create_collection("demo")
+# Use cosine space so distance ∈ [0, 2] and similarity = 1 - distance is exact.
+collection = client.create_collection("demo", metadata={"hnsw:space": "cosine"})
 
 collection.add(
     documents=[
@@ -34,9 +35,9 @@ def answer_question(query: str) -> str:
     # retrieval
     results = collection.query(query_texts=[query], n_results=3)
     chunks = results["documents"][0]
-    # ChromaDB returns L2 distances — convert to rough similarity
+    # Cosine distance ∈ [0, 2] → similarity = 1 - distance (exact for this metric).
     distances = results["distances"][0]
-    scores = [max(0.0, 1.0 - d) for d in distances]
+    scores = [1.0 - d for d in distances]
 
     log_retrieval(query=query, chunks=chunks, scores=scores, k_requested=3)
 

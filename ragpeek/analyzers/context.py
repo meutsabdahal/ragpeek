@@ -146,18 +146,20 @@ def analyze_context(
                 "best_similarity": best_score,
             }
 
-        if best_chunk_idx > config.lost_in_middle_position:
+        if best_chunk_idx > config.rank_disagreement_position:
             original_score = retrieval_span.scores[best_chunk_idx]
             top_score = retrieval_span.scores[0]
             message = (
-                f"Lost-in-the-middle signal: response is most similar to chunk "
-                f"#{best_chunk_idx + 1} (retrieval score: {original_score:.2f}), "
-                f"not chunk #1 (score: {top_score:.2f}). "
-                f"Consider reranking chunks by response-relevance before generation."
+                f"Rank-disagreement signal: the response aligns most with chunk "
+                f"#{best_chunk_idx + 1} (retrieval rank {best_chunk_idx + 1}, "
+                f"score {original_score:.2f}), not the retriever's top-ranked "
+                f"chunk #1 (score {top_score:.2f}). The retriever's ordering "
+                f"disagrees with the chunk the answer actually used — a reranking "
+                f"signal. Signal — calibrate to your embedder."
             )
             note = _record_note(
                 generation_span,
-                code="lost_in_the_middle",
+                code="rank_disagreement",
                 severity="warn",
                 message=message,
                 retrieval_event_index=retrieval_span.event_index,
@@ -182,7 +184,8 @@ def analyze_context(
                 f"Low context utilisation — response has low semantic similarity "
                 f"to the retrieved chunks (best: {best_overall['best_similarity']:.2f}). "
                 f"The LLM may be answering from its training weights rather than "
-                f"the provided context."
+                f"the provided context. Signal — this similarity floor is absolute; "
+                f"calibrate it to your embedder."
             ),
             best_similarity=round(best_overall["best_similarity"], 4),
             retrieval_event_index=best_overall["retrieval_span"].event_index,

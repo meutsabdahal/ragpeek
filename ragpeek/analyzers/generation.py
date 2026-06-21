@@ -36,10 +36,11 @@ def analyze_generation(span: GenerationSpan, config: TracerConfig) -> None:
 
     if hedging_found:
         span.diagnosis.append(
-            f"Hedging language detected ({len(hedging_found)} phrases: "
+            f"Hedging-language signal ({len(hedging_found)} phrases: "
             f"{', '.join(repr(p) for p in hedging_found[:3])}{'...' if len(hedging_found) > 3 else ''}). "
             f"The model may be answering from general knowledge rather than "
-            f"the retrieved context."
+            f"the retrieved context. Phrase-list heuristic — calibrate the list "
+            f"to your domain."
         )
 
     # Heuristic 2: empty or very short response
@@ -49,6 +50,6 @@ def analyze_generation(span: GenerationSpan, config: TracerConfig) -> None:
             "Check model availability and prompt formatting."
         )
 
-    # no issues found
+    # no signals raised
     if not span.diagnosis:
-        span.diagnosis.append("Generation looks healthy — no obvious issues detected.")
+        span.diagnosis.append("Generation looks healthy — no obvious signals.")
