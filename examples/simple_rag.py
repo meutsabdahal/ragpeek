@@ -1,22 +1,10 @@
-import chromadb
 import httpx
+from corpus import build_collection
 from ragpeek import trace, log_retrieval, log_generation
 
-# --- setup a tiny in-memory ChromaDB corpus ---
-client = chromadb.Client()
-# Use cosine space so distance ∈ [0, 2] and similarity = 1 - distance is exact.
-collection = client.create_collection("demo", metadata={"hnsw:space": "cosine"})
-
-collection.add(
-    documents=[
-        "Jupiter is the largest planet in the Solar System, more massive than all the others combined.",
-        "Saturn is the second-largest planet and is best known for its prominent ring system.",
-        "Mars, the red planet, hosts Olympus Mons, the tallest volcano in the Solar System.",
-        "Venus is the hottest planet, with surface temperatures around 465 degrees Celsius.",
-        "Mercury is the smallest planet and the closest to the Sun.",
-    ],
-    ids=["doc1", "doc2", "doc3", "doc4", "doc5"],
-)
+# Ingest the corpus: load the multi-paragraph docs in examples/data/, split them
+# into overlapping chunks, and index those — see examples/corpus.py.
+collection = build_collection("demo")
 
 
 def _call_ollama(prompt: str, model: str = "llama3.2") -> str:

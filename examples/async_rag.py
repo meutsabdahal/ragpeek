@@ -1,28 +1,14 @@
 from __future__ import annotations
 import asyncio
 import httpx
-import chromadb
 
+from corpus import build_collection
 from ragpeek import trace, log_retrieval, log_generation
 from ragpeek.config import TracerConfig
 
-# Corpus setup — same tiny in-memory ChromaDB as simple_rag.py
-_client = chromadb.Client()
-# Use cosine space so distance ∈ [0, 2] and similarity = 1 - distance is exact.
-_collection = _client.create_collection(
-    "demo_async", metadata={"hnsw:space": "cosine"}
-)
-
-_collection.add(
-    documents=[
-        "Jupiter is the largest planet in the Solar System, more massive than all the others combined.",
-        "Saturn is the second-largest planet and is best known for its prominent ring system.",
-        "Mars, the red planet, hosts Olympus Mons, the tallest volcano in the Solar System.",
-        "Venus is the hottest planet, with surface temperatures around 465 degrees Celsius.",
-        "Mercury is the smallest planet and the closest to the Sun.",
-    ],
-    ids=["doc1", "doc2", "doc3", "doc4", "doc5"],
-)
+# Ingest the corpus: load + chunk the docs in examples/data/ and index them
+# (same loader as simple_rag.py — see examples/corpus.py).
+_collection = build_collection("demo_async")
 
 
 # Async retriever
@@ -116,7 +102,7 @@ async def run_concurrent_queries():
 
 # Custom config example
 config = TracerConfig(
-    min_score_threshold=0.6,  # stricter than default 0.5
+    min_score_threshold=0.6,  # opt-in absolute floor (default: None)
     semantic=True,
     show_prompt=False,  # hide the full prompt in terminal output
 )
