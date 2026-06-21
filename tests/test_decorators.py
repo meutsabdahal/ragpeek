@@ -1,3 +1,4 @@
+import asyncio
 import json
 import pytest
 from ragpeek import trace, log_retrieval, log_generation, link_retrieval_to_generation
@@ -34,6 +35,48 @@ async def test_async_decorator_returns_value():
 
     result = await async_pipeline("async query")
     assert result == "async answer: async query"
+
+
+@pytest.mark.asyncio
+async def test_concurrent_async_traces_do_not_cross_spans():
+    # The headline feature: each @trace-decorated coroutine gets its own session
+    # via ContextVar. We interleave the coroutines with await points *between*
+    # logging retrieval and generation, so a shared/global "current session"
+    # would route spans into the wrong session and corrupt the assertions below.
+    @trace(semantic=False, render=False)
+    async def pipeline(query: str) -> object:
+        log_retrieval(query=query, chunks=[f"chunk for {query}"], scores=[0.9])
+        await asyncio.sleep(0)  # yield — let sibling coroutines run here
+        log_generation(
+            prompt=f"prompt for {query}",
+            response=f"response for {query}",
+            model="test",
+        )
+        await asyncio.sleep(0)
+        return get_collector().get_current_session()
+
+    sessions = await asyncio.gather(
+        pipeline("alpha"),
+        pipeline("beta"),
+        pipeline("gamma"),
+    )
+
+    by_query = {s.query: s for s in sessions}
+    assert set(by_query) == {"alpha", "beta", "gamma"}
+
+    # session ids are all distinct
+    assert len({s.session_id for s in sessions}) == 3
+
+    for query, session in by_query.items():
+        # exactly its own one retrieval + one generation — nothing leaked in
+        assert len(session.retrieval_spans) == 1
+        assert len(session.generation_spans) == 1
+        assert session.retrieval_spans[0].chunks == [f"chunk for {query}"]
+        assert session.generation_spans[0].response == f"response for {query}"
+        # and the generation linked to this session's own retrieval, not a sibling's
+        assert session.generation_spans[0].linked_retrieval_indices == [
+            session.retrieval_spans[0].event_index
+        ]
 
 
 def test_nested_traces_restore_outer_session():
