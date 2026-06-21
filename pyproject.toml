@@ -33,6 +33,9 @@ dependencies = ["rich>=13.0"]
 semantic = ["sentence-transformers>=3.0", "scikit-learn>=1.3"]
 examples = ["chromadb>=1.5.9", "httpx>=0.27"]
 
+[project.scripts]
+ragpeek = "ragpeek.cli:main"
+
 [project.urls]
 Homepage = "https://github.com/meutsabdahal/ragpeek"
 Repository = "https://github.com/meutsabdahal/ragpeek"

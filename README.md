@@ -73,6 +73,23 @@ uv run pytest tests/ -v
 
 ---
 
+## Try it instantly
+
+See the full diagnostic trace on built-in sample data — no code required:
+
+```bash
+ragpeek demo                      # render the trace; add --semantic for embedding analysis
+ragpeek demo --html report.html   # also save a shareable HTML report
+```
+
+Already captured a trace? Render and diagnose it with one command:
+
+```bash
+ragpeek trace.json                # view a saved trace (from @trace(output=...) or serialize_trace)
+```
+
+---
+
 ## Quick start
 
 **1. Add two imports and two log calls to your existing pipeline**

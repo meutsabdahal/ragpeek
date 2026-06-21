@@ -3,7 +3,7 @@ from importlib.metadata import PackageNotFoundError, version
 from ragpeek.decorators import trace
 from ragpeek.logging import log_retrieval, log_generation, link_retrieval_to_generation
 from ragpeek.config import TracerConfig
-from ragpeek.serialization import serialize_trace
+from ragpeek.serialization import deserialize_trace, serialize_trace
 
 try:
     __version__ = version("ragpeek")
@@ -16,6 +16,7 @@ __all__ = [
     "log_generation",
     "link_retrieval_to_generation",
     "serialize_trace",
+    "deserialize_trace",
     "TracerConfig",
     "__version__",
 ]

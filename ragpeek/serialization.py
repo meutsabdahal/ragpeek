@@ -53,3 +53,55 @@ def trace_to_dict(session: TraceSession) -> dict[str, Any]:
 
 def serialize_trace(session: TraceSession, *, indent: int = 2) -> str:
     return json.dumps(trace_to_dict(session), indent=indent)
+
+
+def _retrieval_span_from_dict(data: dict[str, Any]) -> RetrievalSpan:
+    return RetrievalSpan(
+        query=data["query"],
+        chunks=list(data["chunks"]),
+        scores=list(data["scores"]),
+        k_requested=data["k_requested"],
+        k_returned=data["k_returned"],
+        latency_ms=data.get("latency_ms", 0.0),
+        diagnosis=list(data.get("diagnosis", [])),
+        analysis_notes=list(data.get("analysis_notes", [])),
+        event_index=data.get("event_index", -1),
+        linked_generation_indices=list(data.get("linked_generation_indices", [])),
+    )
+
+
+def _generation_span_from_dict(data: dict[str, Any]) -> GenerationSpan:
+    return GenerationSpan(
+        prompt=data["prompt"],
+        response=data["response"],
+        model=data["model"],
+        prompt_tokens=data.get("prompt_tokens", 0),
+        response_tokens=data.get("response_tokens", 0),
+        latency_ms=data.get("latency_ms", 0.0),
+        diagnosis=list(data.get("diagnosis", [])),
+        analysis_notes=list(data.get("analysis_notes", [])),
+        event_index=data.get("event_index", -1),
+        linked_retrieval_indices=list(data.get("linked_retrieval_indices", [])),
+    )
+
+
+def trace_from_dict(data: dict[str, Any]) -> TraceSession:
+    """Rebuild a TraceSession from a trace_to_dict() payload (the inverse of
+    trace_to_dict). Spans keep their stored diagnoses — analyzers are not re-run.
+    """
+    session = TraceSession(query=data.get("query", ""))
+    if data.get("session_id"):
+        session.session_id = data["session_id"]
+    session.total_latency_ms = data.get("total_latency_ms", 0.0)
+    session.analysis_report = data.get("analysis_report", {}) or {}
+    session.retrieval_spans = [
+        _retrieval_span_from_dict(span) for span in data.get("retrieval_spans", [])
+    ]
+    session.generation_spans = [
+        _generation_span_from_dict(span) for span in data.get("generation_spans", [])
+    ]
+    return session
+
+
+def deserialize_trace(payload: str) -> TraceSession:
+    return trace_from_dict(json.loads(payload))
