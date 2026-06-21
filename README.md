@@ -50,28 +50,26 @@ Most RAG debugging looks like this: print retrieved chunks to stdout, read them 
 
 ## Install
 
-This project is not yet published to PyPI. Install from source (recommended):
+```bash
+pip install ragpeek
+```
+
+The default install is lightweight (only [`rich`](https://github.com/Textualize/rich) at runtime). For the embedding-based context analyzer, add the `semantic` extra:
+
+```bash
+pip install "ragpeek[semantic]"
+```
+
+Requires Python 3.10+. On first semantic run, `ragpeek` may download a small embedding model (~80MB) — a one-time download.
+
+### From source
 
 ```bash
 git clone https://github.com/meutsabdahal/ragpeek
 cd ragpeek
-# Recommended: use the uv-native workflow (creates environment and installs dev deps)
-uv sync --group dev
-# Run tests or examples via uv
+uv sync --group dev      # create env + install dev deps
 uv run pytest tests/ -v
 ```
-
-Alternatively, install into a virtual environment with pip:
-
-```bash
-python -m venv .venv
-source .venv/bin/activate
-pip install -e .
-```
-
-Requires Python 3.10+.
-
-On first semantic run, `ragpeek` may download a small embedding model (~80MB). This is a one-time download.
 
 ---
 
