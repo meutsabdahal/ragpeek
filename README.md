@@ -4,47 +4,39 @@
 
 **A lightweight debugger for RAG pipelines.**
 
-When a RAG pipeline gives a wrong answer, you have no idea why. `ragpeek` wraps your existing pipeline with one decorator and shows you exactly where it broke retrieval, context ranking, or generation.
+When a RAG pipeline returns a bad answer, the usual move is to print the retrieved
+chunks and squint at them. ragpeek replaces the squinting: wrap your pipeline in one
+decorator and it shows you, per query, what was retrieved, the score of every chunk,
+the exact prompt sent to the model, and a plain-English read on where things went
+sideways retrieval, context ranking, or generation.
 
-> **Score convention:** `ragpeek` assumes higher scores mean more relevant chunks.
-> If your vector store returns distances, convert them to similarities before logging.
+See it in one command — no code:
 
 ```
-$ python app.py
+$ ragpeek demo
 
-──────────────────────────────────────────────────────────────────
- Query: Which is the largest planet in the Solar System?
-──────────────────────────────────────────────────────────────────
- Retrieval                                                   80ms
- ┌──────────────────────────────────────────┬───────┬──────┐
- │ Chunk                                    │ Score │      │
- ├──────────────────────────────────────────┼───────┼──────┤
- │ Jupiter is the largest planet in the...  │ 0.89  │  ✓   │
- │ Saturn is the second-largest planet...   │ 0.82  │  ✓   │
- │ Mars hosts Olympus Mons, the tallest...  │ 0.45  │  ⚠   │
- │ Venus is the hottest planet, around...   │ 0.38  │  ⚠   │
- │ Mercury is the smallest planet, near...  │ 0.25  │  ⚠   │
- └──────────────────────────────────────────┴───────┴──────┘
- ⚠ 3 of 5 chunks sit in the lower half of this result's score
-   range (top 0.89, bottom 0.25) — possible low-relevance padding.
-   Signal — calibrate to your embedder.
+Query: Which is the largest planet in the Solar System?   (non-semantic)
 
- Generation                                                 200ms
- Prompt tokens: 87  │  Response tokens: 92  │  Model: llama3.2
+Retrieval  k=5/5
+  ✓ 0.89  Jupiter is the largest planet in the Solar System…
+  ⚠ 0.55  Saturn is the second-largest planet, known for its rings…
+  ✗ 0.21  Mars hosts Olympus Mons, the tallest volcano…
+  ✗ 0.18  Venus is the hottest planet (~465 °C)…
+  ✗ 0.12  Mercury is the smallest planet, closest to the Sun…
 
- ✓ Generation looks healthy — no obvious signals.
+  ⚠ 3 of 5 chunks sit in the lower half of this result's score range
+    (top 0.89, bottom 0.12) — possible low-relevance padding.
+  ✓ Sharp rank-1 separation (0.89 vs 0.55): the retriever cleanly
+    separates the top match — a precision signal.
 
- Total latency: 280ms
-──────────────────────────────────────────────────────────────────
+Generation  model=demo-llm
+  ⚠ Hedging-language signal ('i believe', 'this may vary'): the model
+    may be leaning on general knowledge instead of the retrieved context.
 ```
 
----
-
-## Why this exists
-
-Most RAG debugging looks like this: print retrieved chunks to stdout, read them manually, guess what went wrong. That's not debugging that's hoping.
-
-`ragpeek` gives you a structured trace of every query: what was retrieved, similarity scores per chunk, the exact prompt sent to the model, and a plain-English diagnosis of where the pipeline is weak.
+> **Score convention:** ragpeek assumes **higher scores mean more relevant** chunks.
+> If your vector store returns distances, convert them to similarities first — see
+> [Works with any vector store](#works-with-any-vector-store).
 
 ---
 
@@ -54,45 +46,55 @@ Most RAG debugging looks like this: print retrieved chunks to stdout, read them 
 pip install ragpeek
 ```
 
-The default install is lightweight (only [`rich`](https://github.com/Textualize/rich) at runtime). For the embedding-based context analyzer, add the `semantic` extra:
+The default install is lightweight — only [`rich`](https://github.com/Textualize/rich)
+at runtime. For the embedding-based context analyzer, add the `semantic` extra:
 
 ```bash
 pip install "ragpeek[semantic]"
 ```
 
-Requires Python 3.10+. On first semantic run, `ragpeek` may download a small embedding model (~80MB) — a one-time download.
+Requires Python 3.10+. On first semantic run, ragpeek downloads a small embedding
+model (~80MB) once.
 
-### From source
+**From source:**
 
 ```bash
 git clone https://github.com/meutsabdahal/ragpeek
 cd ragpeek
-uv sync --group dev      # create env + install dev deps
+uv sync --group dev        # create the env + install dev deps
 uv run pytest tests/ -v
 ```
 
 ---
 
-## Try it instantly
+## Command line
 
-See the full diagnostic trace on built-in sample data — no code required:
+Once installed, `ragpeek` is a command:
 
 ```bash
-ragpeek demo                      # render the trace; add --semantic for embedding analysis
-ragpeek demo --html report.html   # also save a shareable HTML report
+ragpeek demo                       # render a diagnostic trace on built-in sample data
+ragpeek demo --semantic            # add embedding-based context analysis (downloads ~80MB once)
+ragpeek demo --html report.html    # also save a shareable HTML report
+ragpeek path/to/trace.json         # view a saved trace (from @trace(output=...) / serialize_trace)
+ragpeek                            # help
 ```
 
-Already captured a trace? Render and diagnose it with one command:
+Running from a source checkout instead of an install? Prefix with `uv run`:
 
 ```bash
-ragpeek trace.json                # view a saved trace (from @trace(output=...) or serialize_trace)
+uv run ragpeek demo
+uv run ragpeek demo --semantic              # add embedding-based context analysis (downloads ~80MB once)
+uv run ragpeek demo --html report.html      # also save an HTML report
+uv run ragpeek tests/fixtures/sample_session.json   # view a saved trace
+uv run ragpeek                              # help
 ```
 
 ---
 
-## Quick start
+## Instrument your pipeline
 
-**1. Add two imports and two log calls to your existing pipeline**
+Tracing your own pipeline is two imports and two log calls — ragpeek never
+monkey-patches your stack, so it works with any retriever and any model.
 
 ```python
 from ragpeek import trace, log_retrieval, log_generation
@@ -109,35 +111,15 @@ def answer_question(query: str) -> str:
     return response
 ```
 
-**2. Call your function exactly as before**
+Call the function exactly as before — the trace prints automatically:
 
 ```python
 answer_question("Which is the largest planet in the Solar System?")
 ```
 
-The trace prints automatically. Nothing else changes.
-
----
-
-## Usage
-
-### Sync pipeline
-
-```python
-from ragpeek import trace, log_retrieval, log_generation
-
-@trace
-def answer(query: str) -> str:
-    docs, scores = retriever.search(query, k=5)
-    log_retrieval(query=query, chunks=docs, scores=scores)
-
-    response = llm.complete(build_prompt(docs, query))
-    log_generation(prompt=build_prompt(docs, query),
-                   response=response, model="llama3.2")
-    return response
-```
-
-### Async pipeline
+Async pipelines work the same way; the active session follows your coroutines
+through every `await` (it rides a `contextvars.ContextVar`), so concurrent
+queries never cross-contaminate:
 
 ```python
 @trace
@@ -146,20 +128,15 @@ async def answer(query: str) -> str:
     log_retrieval(query=query, chunks=docs, scores=scores)
 
     response = await llm.acomplete(build_prompt(docs, query))
-    log_generation(prompt=build_prompt(docs, query),
-                   response=response, model="llama3.2")
+    log_generation(prompt=build_prompt(docs, query), response=response, model="llama3.2")
     return response
 ```
 
-### Save an HTML report
+---
 
-```python
-@trace(output="report.html")
-def answer(query: str) -> str:
-    ...
-```
+## Configuration
 
-### Configure thresholds
+Pass a `TracerConfig` to tune thresholds, or flip decorator flags for common cases:
 
 ```python
 from ragpeek import trace, TracerConfig
@@ -167,7 +144,7 @@ from ragpeek import trace, TracerConfig
 config = TracerConfig(
     score_gap_threshold=0.3,     # rank-1→rank-2 gap that reads as precision
     semantic=True,               # embedding-based context analysis
-    show_prompt=False,           # hide full prompt in terminal output
+    show_prompt=False,           # hide the full prompt in terminal output
     # min_score_threshold=0.6,   # opt-in absolute floor — only set once you've
     #                            # calibrated a cutoff for your own embedder
 )
@@ -177,34 +154,22 @@ def answer(query: str) -> str:
     ...
 ```
 
-### Skip semantic analysis (faster, no embedding model)
-
 ```python
-@trace(semantic=False)
-def answer(query: str) -> str:
-    ...
+@trace(semantic=False)              # skip the embedding model (faster, no download)
+@trace(output="report.html")        # save a shareable HTML report
+@trace(render=False)                # don't print — just populate session.analysis_report
 ```
 
-### Disable rendering for downstream tooling
-
-```python
-from ragpeek import trace, log_retrieval, log_generation, serialize_trace
-
-@trace(render=False)
-def answer(query: str) -> str:
-    docs, scores = retriever.search(query, k=5)
-    log_retrieval(query=query, chunks=docs, scores=scores)
-
-    response = llm.complete(build_prompt(docs, query))
-    log_generation(prompt=build_prompt(docs, query), response=response, model="llama3.2")
-    return response
-```
-
-The analyzers still run and populate `session.analysis_report`; once you have the finalized session object, use `serialize_trace(...)` to hand it to downstream tools.
+With `render=False` the analyzers still run; grab the finalized session and hand it
+to downstream tooling with `serialize_trace(...)` (and `deserialize_trace(...)` to
+read it back, e.g. `ragpeek trace.json`).
 
 ---
 
 ## Works with any vector store
+
+`log_retrieval` takes similarity **scores** (higher = better). Most stores return
+those directly; some return distances you convert first.
 
 ```python
 # ChromaDB (cosine space): distance ∈ [0, 2] → similarity = 1 - distance
@@ -226,7 +191,7 @@ log_retrieval(query=query,
               scores=[r.score for r in results])
 ```
 
-> **Note on scores:** `ragpeek` assumes higher score = more relevant. There is
+> **Note on scores:** ragpeek assumes higher score = more relevant. There is
 > no single distance→similarity formula — convert per metric:
 >
 > | Store returns | Correct conversion |
@@ -239,9 +204,8 @@ log_retrieval(query=query,
 > `score = 1.0 - distance` is **only** correct for cosine distance; using it on
 > raw L2 distances silently produces wrong (often negative) similarities.
 
-### Explicit retrieval-generation pairing
-
-If your workflow needs a non-default association, keep the returned span objects and pair them explicitly:
+Need a non-default retrieval→generation association? Keep the returned span objects
+and pair them explicitly:
 
 ```python
 from ragpeek import trace, log_retrieval, log_generation, link_retrieval_to_generation
@@ -254,8 +218,6 @@ def answer(query: str) -> str:
     link_retrieval_to_generation(retrieval, generation)
     return response
 ```
-
-This is useful when a generation should be tied to a specific retrieval step after the fact.
 
 ---
 
@@ -279,42 +241,37 @@ own embedder.
 
 ## How it works
 
-1. `@trace` wraps your function and creates a `TraceSession`
-2. Session ID is stored in a `contextvars.ContextVar` propagates correctly through both sync and async code without you passing anything around
-3. `log_retrieval()` and `log_generation()` read the `ContextVar` and append spans to the active session
-4. After your function returns, three analyzers run on the collected data:
-   - **Retrieval analyzer**: within-set score distribution, low-relevance padding, rank-1 precision, k mismatch
-   - **Context analyzer**: chunk-response similarity, rank-disagreement (reranking) signal
-   - **Generation analyzer**: hedging language, response length anomalies
-5. Terminal renderer prints the trace; HTML renderer saves a shareable report
+1. `@trace` wraps your function and opens a `TraceSession`.
+2. The session id lives in a `contextvars.ContextVar`, so it propagates through both
+   sync and async code without you threading anything through your call stack.
+3. `log_retrieval()` and `log_generation()` read that `ContextVar` and append spans
+   to the active session.
+4. When your function returns, three analyzers run over the collected spans:
+   - **Retrieval** — within-set score distribution, low-relevance padding, rank-1 precision, k mismatch.
+   - **Context** — chunk↔response similarity and the rank-disagreement (reranking) signal.
+   - **Generation** — hedging language and response-length anomalies.
+5. The terminal renderer prints the trace; the HTML renderer saves a shareable report.
 
-The embedding model runs entirely locally your data never leaves your machine.
+The embedding model runs entirely on your machine — your data never leaves it.
 
 ---
 
 ## Limitations
 
-`log_retrieval` and `log_generation` must be called manually `ragpeek` does not monkey-patch framework internals. This means it works with any stack but requires three lines of instrumentation code per pipeline. This is a deliberate tradeoff: explicit over magic.
-
-Retrieval signals are computed *within* each result set and assume higher = better relevance, but they can't know your embedder's absolute scale — treat every diagnosis as a signal to calibrate, not a verdict. Convert distances to similarities per metric (see the table above) before calling `log_retrieval`.
-
----
-
-## Development setup
-
-```bash
-git clone https://github.com/meutsabdahal/ragpeek
-cd ragpeek
-uv sync --group dev
-uv run pytest tests/ -v
-```
+- **Explicit, not magic.** You call `log_retrieval` / `log_generation` yourself —
+  ragpeek doesn't patch framework internals. That's three lines of instrumentation
+  per pipeline, traded for working with any stack.
+- **Signals, not truth.** Retrieval signals are computed *within* each result set and
+  assume higher = better, but they can't know your embedder's absolute scale. Treat
+  every diagnosis as a prompt to calibrate, and convert distances to similarities
+  per metric (table above) before calling `log_retrieval`.
 
 ---
+
 ## Contributing
 
-Issues and PRs welcome. If a vector store integration doesn't work or a diagnosis is wrong, open an issue with a minimal reproduction.
-
----
+Issues and PRs welcome. If a vector-store integration doesn't work or a diagnosis
+looks wrong, open an issue with a minimal reproduction.
 
 ## License
 
