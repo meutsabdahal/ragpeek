@@ -13,17 +13,17 @@ When a RAG pipeline gives a wrong answer, you have no idea why. `ragpeek` wraps 
 $ python app.py
 
 ──────────────────────────────────────────────────────────────────
- Query: What was NEPSE's highest index value in 2023?
+ Query: Which is the largest planet in the Solar System?
 ──────────────────────────────────────────────────────────────────
  Retrieval                                                   80ms
  ┌──────────────────────────────────────────┬───────┬──────┐
  │ Chunk                                    │ Score │      │
  ├──────────────────────────────────────────┼───────┼──────┤
- │ NEPSE reached its peak of 3,198...       │ 0.89  │  ✓   │
- │ The index saw significant volatility...  │ 0.82  │  ✓   │
- │ Trading volumes in Q3 2023 were...       │ 0.45  │  ⚠   │
- │ Market capitalisation stood at...        │ 0.38  │  ⚠   │
- │ Foreign investment flows into...         │ 0.25  │  ⚠   │
+ │ Jupiter is the largest planet in the...  │ 0.89  │  ✓   │
+ │ Saturn is the second-largest planet...   │ 0.82  │  ✓   │
+ │ Mars hosts Olympus Mons, the tallest...  │ 0.45  │  ⚠   │
+ │ Venus is the hottest planet, around...   │ 0.38  │  ⚠   │
+ │ Mercury is the smallest planet, near...  │ 0.25  │  ⚠   │
  └──────────────────────────────────────────┴───────┴──────┘
  ⚠ 3 of 5 chunks sit in the lower half of this result's score
    range (top 0.89, bottom 0.25) — possible low-relevance padding.
@@ -95,7 +95,7 @@ def answer_question(query: str) -> str:
 **2. Call your function exactly as before**
 
 ```python
-answer_question("What was NEPSE's highest index value in 2023?")
+answer_question("Which is the largest planet in the Solar System?")
 ```
 
 The trace prints automatically. Nothing else changes.

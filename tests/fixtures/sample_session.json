@@ -1,16 +1,16 @@
 {
     "session_id": "abc12345",
-    "query": "What was NEPSE's highest index value in 2023?",
+    "query": "Which is the largest planet in the Solar System?",
     "total_latency_ms": 2469.3,
     "retrieval_spans": [
         {
-            "query": "What was NEPSE's highest index value in 2023?",
+            "query": "Which is the largest planet in the Solar System?",
             "chunks": [
-                "NEPSE reached its all-time high of 3,198.60 points on August 12, 2021.",
-                "The Nepal Stock Exchange index saw significant volatility throughout 2023.",
-                "Trading volumes on NEPSE increased by 34% in the third quarter of 2023.",
-                "Market capitalisation of NEPSE stood at NPR 3.2 trillion in December 2023.",
-                "Foreign investment in Nepal's capital markets remains restricted by regulation."
+                "Jupiter is the largest planet in the Solar System, more massive than all the others combined.",
+                "Saturn is the second-largest planet and is best known for its prominent ring system.",
+                "Mars, the red planet, hosts Olympus Mons, the tallest volcano in the Solar System.",
+                "Venus is the hottest planet, with surface temperatures around 465 degrees Celsius.",
+                "Mercury is the smallest planet and the closest to the Sun."
             ],
             "scores": [
                 0.81,
@@ -29,8 +29,8 @@
     ],
     "generation_spans": [
         {
-            "prompt": "Answer the question using only the context below.\n\nContext:\nNEPSE reached its all-time high of 3,198.60 points on August 12, 2021.\n\nThe Nepal Stock Exchange index saw significant volatility throughout 2023.\n\nTrading volumes on NEPSE increased by 34% in the third quarter of 2023.\n\nMarket capitalisation of NEPSE stood at NPR 3.2 trillion in December 2023.\n\nForeign investment in Nepal's capital markets remains restricted by regulation.\n\nQuestion: What was NEPSE's highest index value in 2023?\n\nAnswer:",
-            "response": "Based on the provided context, NEPSE reached its all-time high of 3,198.60 points on August 12, 2021, not specifically in 2023. The context mentions significant volatility throughout 2023 but does not state the highest index value for that specific year.",
+            "prompt": "Answer the question using only the context below.\n\nContext:\nJupiter is the largest planet in the Solar System, more massive than all the others combined.\n\nSaturn is the second-largest planet and is best known for its prominent ring system.\n\nMars, the red planet, hosts Olympus Mons, the tallest volcano in the Solar System.\n\nVenus is the hottest planet, with surface temperatures around 465 degrees Celsius.\n\nMercury is the smallest planet and the closest to the Sun.\n\nQuestion: Which is the largest planet in the Solar System?\n\nAnswer:",
+            "response": "Based on the provided context, Jupiter is the largest planet in the Solar System, more massive than all the other planets combined.",
             "model": "llama3.2",
             "prompt_tokens": 847,
             "response_tokens": 124,

@@ -9,11 +9,11 @@ collection = client.create_collection("demo", metadata={"hnsw:space": "cosine"})
 
 collection.add(
     documents=[
-        "NEPSE reached its all-time high of 3,198.60 points on August 12, 2021.",
-        "The Nepal Stock Exchange index saw significant volatility throughout 2023.",
-        "Trading volumes on NEPSE increased by 34% in the third quarter of 2023.",
-        "Market capitalisation of NEPSE stood at NPR 3.2 trillion in December 2023.",
-        "Foreign investment in Nepal's capital markets remains restricted by regulation.",
+        "Jupiter is the largest planet in the Solar System, more massive than all the others combined.",
+        "Saturn is the second-largest planet and is best known for its prominent ring system.",
+        "Mars, the red planet, hosts Olympus Mons, the tallest volcano in the Solar System.",
+        "Venus is the hottest planet, with surface temperatures around 465 degrees Celsius.",
+        "Mercury is the smallest planet and the closest to the Sun.",
     ],
     ids=["doc1", "doc2", "doc3", "doc4", "doc5"],
 )
@@ -55,4 +55,4 @@ def answer_question(query: str) -> str:
 
 
 if __name__ == "__main__":
-    answer_question("What was NEPSE's highest index value?")
+    answer_question("Which is the largest planet in the Solar System?")

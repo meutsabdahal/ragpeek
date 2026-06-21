@@ -1,57 +1,47 @@
 import pytest
-from ragpeek.session import RetrievalSpan, GenerationSpan
 from ragpeek.config import TracerConfig
 from ragpeek.analyzers.retrieval import analyze_retrieval
 from ragpeek.analyzers.generation import analyze_generation
 from ragpeek.analyzers.context import analyze_context
 
-
-def make_retrieval_span(scores):
-    return RetrievalSpan(
-        query="test",
-        chunks=[f"chunk {i}" for i in range(len(scores))],
-        scores=scores,
-        k_requested=len(scores),
-        k_returned=len(scores),
-    )
+# Span builders (make_retrieval_span, make_generation_span) and the neutral
+# sample corpus come from tests/conftest.py.
 
 
-def test_retrieval_no_scores_handled():
-    span = RetrievalSpan(
-        query="test", chunks=[], scores=[], k_requested=0, k_returned=0
-    )
+def test_retrieval_no_scores_handled(make_retrieval_span):
+    span = make_retrieval_span([], chunks=[])
     analyze_retrieval(span, config=TracerConfig())
     assert any("No scores available" in d for d in span.diagnosis)
 
 
-def test_retrieval_within_set_padding_flagged():
+def test_retrieval_within_set_padding_flagged(make_retrieval_span):
     # top-heavy set: most chunks trail the best match within this result set
     span = make_retrieval_span([0.9, 0.85, 0.2, 0.15, 0.1])
     analyze_retrieval(span, config=TracerConfig())
     assert any("padding" in d for d in span.diagnosis)
 
 
-def test_retrieval_flat_distribution_reads_as_low_discrimination():
+def test_retrieval_flat_distribution_reads_as_low_discrimination(make_retrieval_span):
     # near-identical scores carry no within-set signal except low discrimination
     span = make_retrieval_span([0.3, 0.3, 0.3, 0.3, 0.3])
     analyze_retrieval(span, config=TracerConfig())
     assert any("discrimination" in d.lower() for d in span.diagnosis)
 
 
-def test_retrieval_clean_spread_raises_no_signal():
+def test_retrieval_clean_spread_raises_no_signal(make_retrieval_span):
     span = make_retrieval_span([0.85, 0.82, 0.80, 0.78, 0.75])
     analyze_retrieval(span, config=TracerConfig())
     assert any("No retrieval signals" in d for d in span.diagnosis)
 
 
-def test_retrieval_sharp_gap_reads_as_precision_not_noise():
+def test_retrieval_sharp_gap_reads_as_precision_not_noise(make_retrieval_span):
     span = make_retrieval_span([0.92, 0.40, 0.38, 0.35, 0.33])
     analyze_retrieval(span, config=TracerConfig())
     assert any("precision" in d for d in span.diagnosis)
     assert not any("noise" in d.lower() for d in span.diagnosis)
 
 
-def test_retrieval_absolute_floor_is_opt_in():
+def test_retrieval_absolute_floor_is_opt_in(make_retrieval_span):
     # default config has no absolute floor — no absolute-cutoff signal fires
     default_span = make_retrieval_span([0.3, 0.3, 0.3, 0.3, 0.3])
     analyze_retrieval(default_span, config=TracerConfig())
@@ -63,49 +53,35 @@ def test_retrieval_absolute_floor_is_opt_in():
     assert any("absolute floor" in d for d in floor_span.diagnosis)
 
 
-def test_retrieval_k_mismatch_flagged():
-    span = RetrievalSpan(
-        query="test",
-        chunks=["a", "b"],
-        scores=[0.8, 0.7],
-        k_requested=5,
-        k_returned=2,
-    )
+def test_retrieval_k_mismatch_flagged(make_retrieval_span):
+    span = make_retrieval_span([0.8, 0.7], chunks=["a", "b"], k_requested=5)
     analyze_retrieval(span, config=TracerConfig())
     assert any("returned" in d for d in span.diagnosis)
 
 
-def test_generation_hedging_flagged():
-    span = GenerationSpan(
-        prompt="prompt",
-        response="I believe this is generally true and typically works this way.",
-        model="test",
+def test_generation_hedging_flagged(make_generation_span):
+    span = make_generation_span(
+        "I believe this is generally true and typically works this way."
     )
     analyze_generation(span, config=TracerConfig())
     assert any("hedging" in d.lower() for d in span.diagnosis)
 
 
-def test_generation_healthy_response():
-    span = GenerationSpan(
-        prompt="prompt",
-        response="The NEPSE index reached 3,198 points on August 12, 2023.",
-        model="test",
-    )
+def test_generation_healthy_response(make_generation_span):
+    span = make_generation_span()  # confident, non-hedging answer
     analyze_generation(span, config=TracerConfig())
     assert any("healthy" in d for d in span.diagnosis)
 
 
-def test_context_analysis_flags_multi_hop_chains_without_semantic_model():
+def test_context_analysis_flags_multi_hop_chains_without_semantic_model(
+    make_retrieval_span, make_generation_span
+):
     retrieval_one = make_retrieval_span([0.9, 0.8])
     retrieval_two = make_retrieval_span([0.85, 0.75])
     retrieval_one.event_index = 0
     retrieval_two.event_index = 1
 
-    generation = GenerationSpan(
-        prompt="prompt",
-        response="The answer depends on both passes.",
-        model="test",
-    )
+    generation = make_generation_span("The answer draws on both retrieval passes.")
     generation.event_index = 2
 
     report = analyze_context(
@@ -120,15 +96,13 @@ def test_context_analysis_flags_multi_hop_chains_without_semantic_model():
     assert generation.analysis_notes[0]["code"] == "multi_retrieval"
 
 
-def test_context_analysis_semantic_missing_dependencies_falls_back(monkeypatch):
+def test_context_analysis_semantic_missing_dependencies_falls_back(
+    make_retrieval_span, make_generation_span, monkeypatch
+):
     retrieval = make_retrieval_span([0.9, 0.8])
     retrieval.event_index = 0
 
-    generation = GenerationSpan(
-        prompt="prompt",
-        response="Answer from context.",
-        model="test",
-    )
+    generation = make_generation_span("Answer drawn from the retrieved context.")
     generation.event_index = 1
 
     def _raise_missing():
@@ -157,16 +131,6 @@ def test_context_analysis_semantic_missing_dependencies_falls_back(monkeypatch):
 # These exercise the embedding-based body of analyze_context without downloading
 # a real model: we replace _get_semantic_resources with a fake that yields exactly
 # the response/chunk cosine similarities each test needs.
-
-
-def _make_retrieval_span_with_chunks(chunks, scores):
-    return RetrievalSpan(
-        query="test",
-        chunks=chunks,
-        scores=scores,
-        k_requested=len(chunks),
-        k_returned=len(chunks),
-    )
 
 
 def _fake_semantic_resources(similarities):
@@ -201,15 +165,13 @@ def _patch_semantic(monkeypatch, similarities):
     )
 
 
-def test_semantic_context_records_best_chunk_without_findings(monkeypatch):
+def test_semantic_context_records_best_chunk_without_findings(
+    make_retrieval_span, make_generation_span, monkeypatch
+):
     _patch_semantic(monkeypatch, [0.9, 0.7, 0.6])
     retrieval = make_retrieval_span([0.9, 0.8, 0.7])
     retrieval.event_index = 0
-    generation = GenerationSpan(
-        prompt="prompt",
-        response="The NEPSE index reached 3198 points, grounded in the first chunk.",
-        model="test",
-    )
+    generation = make_generation_span()  # confident, non-hedging answer
     generation.event_index = 1
 
     report = analyze_context(retrieval, generation, config=TracerConfig(semantic=True))
@@ -220,15 +182,15 @@ def test_semantic_context_records_best_chunk_without_findings(monkeypatch):
     assert generation.analysis_notes == []
 
 
-def test_semantic_context_flags_rank_disagreement(monkeypatch):
+def test_semantic_context_flags_rank_disagreement(
+    make_retrieval_span, make_generation_span, monkeypatch
+):
     # response aligns most with chunk index 2 — past rank_disagreement_position (1)
     _patch_semantic(monkeypatch, [0.50, 0.55, 0.85])
     retrieval = make_retrieval_span([0.90, 0.80, 0.70])
     retrieval.event_index = 0
-    generation = GenerationSpan(
-        prompt="prompt",
-        response="An answer grounded in the third retrieved chunk, not the first.",
-        model="test",
+    generation = make_generation_span(
+        "An answer aligned with the third retrieved passage, not the first."
     )
     generation.event_index = 1
 
@@ -242,15 +204,15 @@ def test_semantic_context_flags_rank_disagreement(monkeypatch):
     assert note["details"]["retrieval_chunk_index"] == 2
 
 
-def test_semantic_context_flags_low_context_utilisation(monkeypatch):
+def test_semantic_context_flags_low_context_utilisation(
+    make_retrieval_span, make_generation_span, monkeypatch
+):
     # every chunk is dissimilar to the response (best below the 0.4 floor)
     _patch_semantic(monkeypatch, [0.30, 0.25, 0.20])
     retrieval = make_retrieval_span([0.90, 0.80, 0.70])
     retrieval.event_index = 0
-    generation = GenerationSpan(
-        prompt="prompt",
-        response="A confident answer that ignores the retrieved context entirely.",
-        model="test",
+    generation = make_generation_span(
+        "A confident answer that ignores the retrieved context entirely."
     )
     generation.event_index = 1
 
@@ -263,15 +225,17 @@ def test_semantic_context_flags_low_context_utilisation(monkeypatch):
     assert note["details"]["best_similarity"] == pytest.approx(0.30, abs=1e-3)
 
 
-def test_semantic_context_flags_short_response_over_context(monkeypatch):
+def test_semantic_context_flags_short_response_over_context(
+    make_retrieval_span, make_generation_span, monkeypatch
+):
     _patch_semantic(monkeypatch, [0.60, 0.50, 0.45])
     long_chunk = " ".join(["context"] * 90)
-    retrieval = _make_retrieval_span_with_chunks(
-        [long_chunk, long_chunk + " x", long_chunk + " y"],
+    retrieval = make_retrieval_span(
         [0.90, 0.80, 0.70],
+        chunks=[long_chunk, long_chunk + " x", long_chunk + " y"],
     )
     retrieval.event_index = 0
-    generation = GenerationSpan(prompt="prompt", response="Too short.", model="test")
+    generation = make_generation_span("Too short.")
     generation.event_index = 1
 
     report = analyze_context(retrieval, generation, config=TracerConfig(semantic=True))
@@ -285,7 +249,9 @@ def test_semantic_context_flags_short_response_over_context(monkeypatch):
     assert note["details"]["context_word_count"] > 200
 
 
-def test_semantic_context_empty_response_returns_before_embedding(monkeypatch):
+def test_semantic_context_empty_response_returns_before_embedding(
+    make_retrieval_span, make_generation_span, monkeypatch
+):
     encoded = {"called": False}
 
     def _resources():
@@ -301,7 +267,7 @@ def test_semantic_context_empty_response_returns_before_embedding(monkeypatch):
     )
     retrieval = make_retrieval_span([0.9, 0.8])
     retrieval.event_index = 0
-    generation = GenerationSpan(prompt="prompt", response="", model="test")
+    generation = make_generation_span("")
     generation.event_index = 1
 
     report = analyze_context(retrieval, generation, config=TracerConfig(semantic=True))
@@ -311,16 +277,14 @@ def test_semantic_context_empty_response_returns_before_embedding(monkeypatch):
     assert encoded["called"] is False  # bailed out before any embedding work
 
 
-def test_semantic_context_handles_empty_chunks(monkeypatch):
+def test_semantic_context_handles_empty_chunks(
+    make_retrieval_span, make_generation_span, monkeypatch
+):
     _patch_semantic(monkeypatch, [])
-    retrieval = RetrievalSpan(
-        query="q", chunks=[], scores=[], k_requested=0, k_returned=0
-    )
+    retrieval = make_retrieval_span([], chunks=[])
     retrieval.event_index = 0
-    generation = GenerationSpan(
-        prompt="prompt",
-        response="A reasonably long answer that should not trip any length heuristic.",
-        model="test",
+    generation = make_generation_span(
+        "A reasonably long answer that should not trip any length heuristic."
     )
     generation.event_index = 1
 
