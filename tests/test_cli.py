@@ -1,5 +1,6 @@
 import io
 import json
+import re
 from pathlib import Path
 
 import pytest
@@ -23,24 +24,106 @@ def captured_console(monkeypatch):
     return buffer
 
 
-def test_cli_demo_renders_a_trace(captured_console):
-    rc = main(["demo"])  # semantic off by default — no model download
+def _keyword_resources():
+    """A fake _get_semantic_resources: deterministic bag-of-words embeddings so
+    retrieval ranks by word overlap — no model download, no network."""
+    dim = 512
+
+    def _vec(text):
+        v = [0.0] * dim
+        for word in re.findall(r"[a-z]+", text.lower()):
+            v[hash(word) % dim] += 1.0
+        return v
+
+    class _Model:
+        def encode(self, texts, normalize_embeddings=True):
+            return [_vec(t) for t in texts]
+
+    def _cosine(a, b):
+        va, vb = a[0], b[0]
+        dot = sum(x * y for x, y in zip(va, vb))
+        na = sum(x * x for x in va) ** 0.5
+        nb = sum(x * x for x in vb) ** 0.5
+        return [[dot / (na * nb) if na and nb else 0.0]]
+
+    return lambda: (_Model(), _cosine)
+
+
+@pytest.fixture
+def fake_embeddings(monkeypatch):
+    monkeypatch.setattr(
+        "ragpeek.analyzers.context._get_semantic_resources", _keyword_resources()
+    )
+
+
+def _stub_llm(monkeypatch, response):
+    monkeypatch.setattr(
+        "ragpeek.cli._ollama_generate",
+        lambda prompt, *, model, timeout=60.0: response,
+    )
+
+
+def test_demo_retrieval_ranks_relevant_doc(fake_embeddings):
+    from ragpeek.cli import _retrieve
+
+    chunks, scores = _retrieve("How hot is Venus?", 3)
+    assert len(chunks) == 3
+    assert "Venus" in chunks[0]  # the question's most relevant built-in doc
+
+
+def test_cli_demo_renders_a_trace(captured_console, fake_embeddings, monkeypatch):
+    _stub_llm(monkeypatch, "Venus is the hottest planet in the Solar System.")
+
+    rc = main(["demo", "How hot is Venus?"])
     output = captured_console.getvalue()
 
     assert rc == 0
     assert "Retrieval" in output
     assert "Generation" in output
-    # the built-in demo data is top-heavy and the answer hedges
-    assert "padding" in output
-    assert "hedging" in output.lower()
+    assert "Venus" in output  # retrieved the relevant doc and answered about it
+
+
+def test_cli_demo_without_llm_notes_retrieval_only(
+    captured_console, fake_embeddings, monkeypatch, capsys
+):
+    _stub_llm(monkeypatch, None)  # no Ollama reachable
+
+    rc = main(["demo", "How hot is Venus?"])
+
+    assert rc == 0
+    assert "Retrieval" in captured_console.getvalue()
+    assert "no LLM reached" in capsys.readouterr().err
+
+
+def test_cli_demo_html_export(captured_console, fake_embeddings, monkeypatch, tmp_path):
+    _stub_llm(monkeypatch, "An answer.")
+    out = tmp_path / "report.html"
+
+    rc = main(["demo", "How hot is Venus?", "--html", str(out)])
+
+    assert rc == 0
+    assert out.is_file()
+    assert "<!DOCTYPE html>" in out.read_text()
+
+
+def test_cli_demo_without_semantic_extra_shows_install_hint(monkeypatch, capsys):
+    def _raise():
+        raise RuntimeError("semantic deps missing")
+
+    monkeypatch.setattr(
+        "ragpeek.analyzers.context._get_semantic_resources", _raise
+    )
+    rc = main(["demo", "How hot is Venus?"])
+    assert rc == 2
+    assert "semantic extra" in capsys.readouterr().err
 
 
 def test_cli_views_saved_trace_file(captured_console):
     fixture = Path(__file__).parent / "fixtures" / "sample_session.json"
     rc = main([str(fixture)])  # bare path → view
-    output = captured_console.getvalue()
 
     assert rc == 0
+    output = captured_console.getvalue()
     assert "largest planet" in output  # the query
     assert "padding" in output  # a stored diagnosis
 
@@ -49,14 +132,6 @@ def test_cli_missing_file_reports_error(capsys):
     rc = main(["does-not-exist.json"])
     assert rc == 2
     assert "no such trace file" in capsys.readouterr().err
-
-
-def test_cli_html_export(captured_console, tmp_path):
-    out = tmp_path / "report.html"
-    rc = main(["demo", "--html", str(out)])
-    assert rc == 0
-    assert out.is_file()
-    assert "<!DOCTYPE html>" in out.read_text()
 
 
 def test_trace_from_dict_round_trips():

@@ -10,28 +10,26 @@ decorator and it shows you, per query, what was retrieved, the score of every ch
 the exact prompt sent to the model, and a plain-English read on where things went
 sideways retrieval, context ranking, or generation.
 
-See it in one command — no code:
+Ask a question in one command — no code (output depends on your question and the LLM):
 
 ```
 $ ragpeek demo
+Question> How hot is Venus?
 
-Query: Which is the largest planet in the Solar System?   (non-semantic)
+Retrieval  k=4/4
+  ✓ 0.77  Venus is the hottest planet, with surface temperatures…
+  ✗ 0.39  Mercury is the smallest planet and the closest to the Sun.
+  ✗ 0.34  Neptune is the most distant planet from the Sun…
+  ✗ 0.31  Mars hosts Olympus Mons, the tallest volcano…
 
-Retrieval  k=5/5
-  ✓ 0.89  Jupiter is the largest planet in the Solar System…
-  ⚠ 0.55  Saturn is the second-largest planet, known for its rings…
-  ✗ 0.21  Mars hosts Olympus Mons, the tallest volcano…
-  ✗ 0.18  Venus is the hottest planet (~465 °C)…
-  ✗ 0.12  Mercury is the smallest planet, closest to the Sun…
-
-  ⚠ 3 of 5 chunks sit in the lower half of this result's score range
-    (top 0.89, bottom 0.12) — possible low-relevance padding.
-  ✓ Sharp rank-1 separation (0.89 vs 0.55): the retriever cleanly
+  ⚠ 3 of 4 chunks sit in the lower half of this result's score range
+    (top 0.77, bottom 0.31) — possible low-relevance padding.
+  ✓ Sharp rank-1 separation (0.77 vs 0.39): the retriever cleanly
     separates the top match — a precision signal.
 
-Generation  model=demo-llm
-  ⚠ Hedging-language signal ('i believe', 'this may vary'): the model
-    may be leaning on general knowledge instead of the retrieved context.
+Generation  model=llama3.2
+  Venus's average surface temperature is around 465 °C…
+  ✓ Generation looks healthy — no obvious signals.
 ```
 
 > **Score convention:** ragpeek assumes **higher scores mean more relevant** chunks.
@@ -47,14 +45,16 @@ pip install ragpeek
 ```
 
 The default install is lightweight — only [`rich`](https://github.com/Textualize/rich)
-at runtime. For the embedding-based context analyzer, add the `semantic` extra:
+at runtime. For the embedding-based context analyzer (and `ragpeek demo`, which
+retrieves with real embeddings), add the `semantic` extra:
 
 ```bash
 pip install "ragpeek[semantic]"
 ```
 
 Requires Python 3.10+. On first semantic run, ragpeek downloads a small embedding
-model (~80MB) once.
+model (~80MB) once. `ragpeek demo` also generates an answer if a local
+[Ollama](https://ollama.com) server is running; without one it shows retrieval only.
 
 **From source:**
 
@@ -72,21 +72,23 @@ uv run pytest tests/ -v
 Once installed, `ragpeek` is a command:
 
 ```bash
-ragpeek demo                       # render a diagnostic trace on built-in sample data
-ragpeek demo --semantic            # add embedding-based context analysis (downloads ~80MB once)
+ragpeek demo                       # prompts for a question, then retrieves + answers + traces it
+ragpeek demo "How hot is Venus?"   # or pass the question directly
+ragpeek demo --model mistral       # choose the Ollama model (default: llama3.2)
 ragpeek demo --html report.html    # also save a shareable HTML report
 ragpeek path/to/trace.json         # view a saved trace (from @trace(output=...) / serialize_trace)
 ragpeek                            # help
 ```
 
-Running from a source checkout instead of an install? Prefix with `uv run`:
+`ragpeek demo` retrieves over a small built-in corpus with real embeddings (needs the
+`semantic` extra) and answers via a local Ollama server if one is running. Running
+from a source checkout instead of an install? Prefix with `uv run`:
 
 ```bash
-uv run ragpeek demo
-uv run ragpeek demo --semantic              # add embedding-based context analysis (downloads ~80MB once)
-uv run ragpeek demo --html report.html      # also save an HTML report
+uv run ragpeek demo "How hot is Venus?"
+uv run ragpeek demo --html report.html              # also save an HTML report
 uv run ragpeek tests/fixtures/sample_session.json   # view a saved trace
-uv run ragpeek                              # help
+uv run ragpeek                                      # help
 ```
 
 ---
