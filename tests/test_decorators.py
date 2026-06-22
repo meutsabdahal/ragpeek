@@ -115,7 +115,7 @@ def test_log_retrieval_outside_trace_is_noop():
 
 
 def test_trace_with_output_arg():
-    import tempfile, os
+    import os
 
     @trace(output="/tmp/test_ragpeek_report.html")
     def pipeline(query: str) -> str:

@@ -26,14 +26,16 @@ def captured_console(monkeypatch):
 
 def _keyword_resources():
     """A fake _get_semantic_resources: deterministic bag-of-words embeddings so
-    retrieval ranks by word overlap — no model download, no network."""
-    dim = 512
+    retrieval ranks by exact word overlap — no model download, no network, and no
+    reliance on hash() (which is salted per process and would make this flaky)."""
+    vocab: dict[str, int] = {}
 
     def _vec(text):
-        v = [0.0] * dim
+        counts: dict[int, float] = {}
         for word in re.findall(r"[a-z]+", text.lower()):
-            v[hash(word) % dim] += 1.0
-        return v
+            idx = vocab.setdefault(word, len(vocab))
+            counts[idx] = counts.get(idx, 0.0) + 1.0
+        return counts
 
     class _Model:
         def encode(self, texts, normalize_embeddings=True):
@@ -41,9 +43,9 @@ def _keyword_resources():
 
     def _cosine(a, b):
         va, vb = a[0], b[0]
-        dot = sum(x * y for x, y in zip(va, vb))
-        na = sum(x * x for x in va) ** 0.5
-        nb = sum(x * x for x in vb) ** 0.5
+        dot = sum(weight * vb[i] for i, weight in va.items() if i in vb)
+        na = sum(w * w for w in va.values()) ** 0.5
+        nb = sum(w * w for w in vb.values()) ** 0.5
         return [[dot / (na * nb) if na and nb else 0.0]]
 
     return lambda: (_Model(), _cosine)
