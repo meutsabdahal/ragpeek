@@ -1,8 +1,7 @@
 from __future__ import annotations
 import asyncio
 import functools
-import time
-from typing import Optional, Callable, Any
+from typing import Optional, Callable
 
 from ragpeek.collector import get_collector
 from ragpeek.config import TracerConfig
