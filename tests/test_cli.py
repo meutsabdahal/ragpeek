@@ -117,7 +117,7 @@ def test_cli_demo_without_semantic_extra_shows_install_hint(monkeypatch, capsys)
     )
     rc = main(["demo", "How hot is Venus?"])
     assert rc == 2
-    assert "semantic extra" in capsys.readouterr().err
+    assert 'ragpeek[semantic]' in capsys.readouterr().err
 
 
 def test_cli_views_saved_trace_file(captured_console):

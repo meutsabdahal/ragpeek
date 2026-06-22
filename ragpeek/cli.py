@@ -80,8 +80,9 @@ def _run_demo(question: str, *, k: int, model: str, html: str | None) -> int:
         chunks, scores = _retrieve(question, k)
     except RuntimeError:
         print(
-            'ragpeek demo needs the semantic extra:\n'
-            '    pip install "ragpeek[semantic]"',
+            "ragpeek demo embeds your question to retrieve real matches, which "
+            "needs the optional semantic dependencies. Install them once with:\n\n"
+            '    pip install "ragpeek[semantic]"\n',
             file=sys.stderr,
         )
         return 2
