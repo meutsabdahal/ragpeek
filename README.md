@@ -1,5 +1,6 @@
 # ragpeek
 
+[![PyPI](https://img.shields.io/pypi/v/ragpeek.svg)](https://pypi.org/project/ragpeek/)
 [![CI](https://github.com/meutsabdahal/ragpeek/actions/workflows/ci.yaml/badge.svg)](https://github.com/meutsabdahal/ragpeek/actions/workflows/ci.yaml)
 
 **A lightweight debugger for RAG pipelines.**
@@ -10,7 +11,7 @@ decorator and it shows you, per query, what was retrieved, the score of every ch
 the exact prompt sent to the model, and a plain-English read on where things went
 sideways retrieval, context ranking, or generation.
 
-Ask a question in one command — no code (output depends on your question and the LLM):
+Ask a question in one command no code (output depends on your question and the LLM):
 
 ```
 $ ragpeek demo
@@ -23,17 +24,17 @@ Retrieval  k=4/4
   ✗ 0.31  Mars hosts Olympus Mons, the tallest volcano…
 
   ⚠ 3 of 4 chunks sit in the lower half of this result's score range
-    (top 0.77, bottom 0.31) — possible low-relevance padding.
+    (top 0.77, bottom 0.31) possible low-relevance padding.
   ✓ Sharp rank-1 separation (0.77 vs 0.39): the retriever cleanly
-    separates the top match — a precision signal.
+    separates the top match a precision signal.
 
 Generation  model=llama3.2
   Venus's average surface temperature is around 465 °C…
-  ✓ Generation looks healthy — no obvious signals.
+  ✓ Generation looks healthy - no obvious signals.
 ```
 
 > **Score convention:** ragpeek assumes **higher scores mean more relevant** chunks.
-> If your vector store returns distances, convert them to similarities first — see
+> If your vector store returns distances, convert them to similarities first see
 > [Works with any vector store](#works-with-any-vector-store).
 
 ---
@@ -44,7 +45,7 @@ Generation  model=llama3.2
 pip install ragpeek
 ```
 
-The default install is lightweight — only [`rich`](https://github.com/Textualize/rich)
+The default install is lightweight only [`rich`](https://github.com/Textualize/rich)
 at runtime. For the embedding-based context analyzer (and `ragpeek demo`, which
 retrieves with real embeddings), add the `semantic` extra:
 
@@ -95,7 +96,7 @@ uv run ragpeek                                      # help
 
 ## Instrument your pipeline
 
-Tracing your own pipeline is two imports and two log calls — ragpeek never
+Tracing your own pipeline is two imports and two log calls ragpeek never
 monkey-patches your stack, so it works with any retriever and any model.
 
 ```python
@@ -113,7 +114,7 @@ def answer_question(query: str) -> str:
     return response
 ```
 
-Call the function exactly as before — the trace prints automatically:
+Call the function exactly as before the trace prints automatically:
 
 ```python
 answer_question("Which is the largest planet in the Solar System?")
@@ -194,14 +195,14 @@ log_retrieval(query=query,
 ```
 
 > **Note on scores:** ragpeek assumes higher score = more relevant. There is
-> no single distance→similarity formula — convert per metric:
+> no single distance→similarity formula convert per metric:
 >
 > | Store returns | Correct conversion |
 > |---|---|
 > | Cosine distance (∈ [0, 2]) | `score = 1.0 - distance` (exact) |
 > | L2 / Euclidean, normalized vectors | `score = 1.0 - distance ** 2 / 2` (exact) |
 > | L2 / Euclidean, un-normalized | `score = 1.0 / (1.0 + distance)` (monotonic squash) |
-> | Inner product / dot product | already a similarity — use as-is (negate if returned as a distance) |
+> | Inner product / dot product | already a similarity use as-is (negate if returned as a distance) |
 >
 > `score = 1.0 - distance` is **only** correct for cosine distance; using it on
 > raw L2 distances silently produces wrong (often negative) similarities.
@@ -226,16 +227,16 @@ def answer(query: str) -> str:
 ## What it surfaces
 
 These are **signals to calibrate**, not verdicts. Scores are read within each
-result set, so they don't assume an absolute scale — tune thresholds to your
+result set, so they don't assume an absolute scale tune thresholds to your
 own embedder.
 
 | Signal | What it means |
 |---|---|
 | Within-set padding | Most chunks fall in the lower half of *this result's* score range (relative, not an absolute cutoff) |
-| Sharp rank-1 separation | The retriever cleanly separates the top match — a **precision** signal, not noise |
-| Flat distribution | Scores barely differ — the retriever can't discriminate (query too vague / chunks too broad) |
+| Sharp rank-1 separation | The retriever cleanly separates the top match a **precision** signal, not noise |
+| Flat distribution | Scores barely differ the retriever can't discriminate (query too vague / chunks too broad) |
 | k mismatch | Retriever returned fewer chunks than requested |
-| Rank disagreement | The answer aligns with a chunk the retriever didn't rank first — a reranking signal |
+| Rank disagreement | The answer aligns with a chunk the retriever didn't rank first a reranking signal |
 | Low context utilisation | The response is semantically dissimilar to every retrieved chunk |
 | Hedging language | Phrase-level signal the model may be answering from training weights, not context |
 
@@ -249,18 +250,18 @@ own embedder.
 3. `log_retrieval()` and `log_generation()` read that `ContextVar` and append spans
    to the active session.
 4. When your function returns, three analyzers run over the collected spans:
-   - **Retrieval** — within-set score distribution, low-relevance padding, rank-1 precision, k mismatch.
-   - **Context** — chunk↔response similarity and the rank-disagreement (reranking) signal.
-   - **Generation** — hedging language and response-length anomalies.
+   - **Retrieval**: within-set score distribution, low-relevance padding, rank-1 precision, k mismatch.
+   - **Context**: chunk↔response similarity and the rank-disagreement (reranking) signal.
+   - **Generation**: hedging language and response-length anomalies.
 5. The terminal renderer prints the trace; the HTML renderer saves a shareable report.
 
-The embedding model runs entirely on your machine — your data never leaves it.
+The embedding model runs entirely on your machine your data never leaves it.
 
 ---
 
 ## Limitations
 
-- **Explicit, not magic.** You call `log_retrieval` / `log_generation` yourself —
+- **Explicit, not magic.** You call `log_retrieval` / `log_generation` yourself
   ragpeek doesn't patch framework internals. That's three lines of instrumentation
   per pipeline, traded for working with any stack.
 - **Signals, not truth.** Retrieval signals are computed *within* each result set and
